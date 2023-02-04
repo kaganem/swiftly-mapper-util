@@ -1,0 +1,9 @@
+global:
+  scrape_interval: 15s
+
+scrape_configs:
+  - job_name: "mapper"
+    metrics_path: "/q/metrics"
+    scrape_interval: 1000ms
+    static_configs:
+      - targets: ["mapper:8080"]

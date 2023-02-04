@@ -1,0 +1,101 @@
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no">
+    <title>ArcGIS API for JavaScript Tutorials: Create a JavaScript starter app</title>
+    <style>
+      html, body, #viewDiv {
+        padding: 0;
+        margin: 0;
+        height: 100%;
+        width: 100%;
+      }
+      
+    </style>
+     <link rel="stylesheet" href="https://js.arcgis.com/4.15/esri/themes/light/main.css">
+     <script src="https://js.arcgis.com/4.15/"></script>
+     <script>
+
+     // My Array
+var locs = ["51.38254, -2.362804", "51.235249, -2.297804", "51.086126, -2.210767"]
+
+
+         require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/Graphic",
+      "esri/layers/GraphicsLayer",
+      "esri/geometry/Multipoint",
+      "esri/layers/FeatureLayer",
+  "esri/geometry/Point",
+  "dojo/domReady!"
+      
+    ], function(Map, MapView, Graphic, GraphicsLayer, 
+    Point) {
+        
+      
+          var map = new Map({
+            basemap: "dark-gray"
+          });
+      
+          var view = new MapView({
+            container: "viewDiv",
+            map: map,
+            center: [46.738586,24.774265], // longitude, latitude
+            zoom: 6
+          });
+
+          
+          
+          var graphicsLayer = new GraphicsLayer();
+       map.add(graphicsLayer);
+       
+      
+         
+          for (i = 0; i < locs.length; i++) {
+            console.log(locs[i].split(",")[0]);
+            // create a point 
+             var Point ={
+              type: "point",
+              longitude: locs[i].split(",")[0], //check if the point is longitude and change accordingly
+               latitude: locs[i].split(",")[1] //check if the point is latitude and change accordingly
+
+             };
+             var simpleMarkerSymbol = {
+               type: "simple-marker",
+               color: [46, 204, 113 ],  // Green
+               outline: {
+                 color: [255, 255, 255], // white
+                 width: 1
+               }
+             };
+
+             //*** ADD ***//
+            // Create attributes
+            var attributes = {
+              Name: "My point",  // The name of the
+              Location: " Point Dume State Beach",  // The owner of the
+            };
+            // Create popup template
+            var popupTemplate = {
+              title: "{Name}",
+              content: "Test <b>{Location}</b>."
+            };
+
+            var pointGraphic = new Graphic({
+              geometry: Point,
+              symbol: simpleMarkerSymbol,
+              //*** ADD ***//
+              attributes: attributes,
+              popupTemplate: popupTemplate
+            });
+
+            graphicsLayer.add(pointGraphic);
+          }
+        });
+        </script>
+  </head>
+  <body>
+    <div id="viewDiv"></div>
+  </body>
+</html>

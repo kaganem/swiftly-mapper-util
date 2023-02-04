@@ -1,0 +1,16 @@
+version: "3.9"
+
+services:
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+  mapper:
+    image: maven:3.8.5-amazoncorretto-11
+    command: bash -c 'cd /app mvn -Duser.home=/app clean && mvn -Duser.home=/app quarkus:dev'
+    ports:
+      - 10001:8080
+    environment:
+      - MAVEN_CONFIG=/var/maven/.m2
+    volumes:
+      - .:/app:delegated
