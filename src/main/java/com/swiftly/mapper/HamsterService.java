@@ -2,15 +2,10 @@ package com.swiftly.mapper;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
-
 import javax.enterprise.context.ApplicationScoped;
-import javax.inject.Inject;
-
-import org.eclipse.microprofile.rest.client.inject.RestClient;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.Gauge;
@@ -21,22 +16,16 @@ import io.micrometer.core.instrument.Timer;
 public class HamsterService {
     final List<Hamster> hamsters = new LinkedList<Hamster>();
 
-    @Inject
-    @RestClient
-    SwiftlySessionService sessionService;
-
-    @Inject
-    @RestClient
-    SwiftlyUserService userService;
-
     private final Timer getSelfTimer;
     private final Counter failedGetSelf;
     private final Counter successfulGetSelf;
     private final Counter failedLogin;
     private final Counter successfulLogin;
-    private final ScheduledExecutorService hamsterExecutor;
+    private final ExecutorService executorService;
+    private final ObjectMapper mapper;
 
-    HamsterService(MeterRegistry registry) {
+    HamsterService(MeterRegistry registry, ObjectMapper mapper) {
+        this.mapper = mapper;
         this.failedGetSelf = registry.counter("get-self.failed");
         this.successfulGetSelf = registry.counter("get-self.successful");
         this.failedLogin = registry.counter("login.failed");
@@ -45,19 +34,17 @@ public class HamsterService {
         this.getSelfTimer = Timer.builder("swiftly.get.self.timer")
                 .publishPercentiles(0.5, 0.75, 0.95, 0.99)
                 .publishPercentileHistogram(true).register(registry);
-        this.hamsterExecutor = Executors.newScheduledThreadPool(32);
+        this.executorService = Executors.newCachedThreadPool();
     }
 
-    public void spawnHamsters(int count, int interval) {
+    public void spawnHamsters(int count) {
         for (int i = 0; i < count; i++) {
-            final Hamster hamster = Hamster.buildHamster(userService, sessionService,
+            final Hamster hamster = Hamster.buildHamster(executorService, mapper,
                     getSelfTimer, failedGetSelf, successfulGetSelf,
                     failedLogin, successfulLogin);
-
-            final ScheduledFuture<?> hamsterSchedule = this.hamsterExecutor
-                    .scheduleAtFixedRate(hamster, 0, interval, TimeUnit.MILLISECONDS);
-
-            hamster.setSchedule(hamsterSchedule);
+            final Thread t = new Thread(hamster);
+            hamster.setRunning(true);
+            t.start();
             hamsters.add(hamster);
         }
     }
@@ -66,7 +53,7 @@ public class HamsterService {
         int killedHamsters = 0;
         while (this.hamsters.size() > 0 && killedHamsters < count) {
             final Hamster hamster = this.hamsters.get(0);
-            hamster.die();
+            hamster.setRunning(false);
             this.hamsters.remove(hamster);
             killedHamsters++;
         }

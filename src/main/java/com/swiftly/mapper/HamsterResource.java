@@ -16,8 +16,8 @@ public class HamsterResource {
     @POST
     @Path("/spawn")
     @Produces(MediaType.TEXT_PLAIN)
-    public void spawn(@QueryParam("count") int count, @QueryParam("interval") int interval) {
-        hamsterService.spawnHamsters(count, interval);
+    public void spawn(@QueryParam("count") int count) {
+        hamsterService.spawnHamsters(count);
     }
 
     @POST
