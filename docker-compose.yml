@@ -1,6 +1,37 @@
 version: "3.9"
 
 services:
+  traefik:
+    image: traefik:2.4.8
+    command:
+      #--log.level=DEBUG
+      - --entrypoints.http.address=:80
+      - --entrypoints.https.address=:443
+      - --providers.docker=true
+      - --api=true
+      # - --certificatesResolvers.letsencrypt.acme.caServer=https://acme-staging-v02.api.letsencrypt.org/directory
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge=true
+      - --certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=http
+      - --certificatesresolvers.letsencrypt.acme.email=${EMAIL}
+      - --certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json
+    labels:
+      - traefik.http.routers.to-https.rule=HostRegexp(`{host:.+}`)
+      - traefik.http.routers.to-https.entrypoints=http
+      - traefik.http.routers.to-https.middlewares=to-https
+      - traefik.http.routers.traefik.rule=Host(`traefik.${DOMAIN}`)
+      - traefik.http.routers.traefik.entrypoints=https
+      - traefik.http.routers.traefik.middlewares=auth
+      - traefik.http.routers.traefik.service=api@internal
+      - traefik.http.routers.traefik.tls=true
+      - traefik.http.routers.traefik.tls.certresolver=${CERT_RESOLVER}
+      - traefik.http.middlewares.to-https.redirectscheme.scheme=https
+      - traefik.http.middlewares.auth.basicauth.users=${TRAEFIK_USER}:${TRAEFIK_PASSWORD_HASH}
+    ports:
+      - 80:80
+      - 443:443
+    volumes:
+      - ./.data/letsencrypt:/letsencrypt
+      - /var/run/docker.sock:/var/run/docker.sock:ro
   prometheus:
     image: prom/prometheus
     volumes:
@@ -10,7 +41,13 @@ services:
     command: bash -c 'cd /app mvn -Duser.home=/app clean && mvn -Duser.home=/app quarkus:dev'
     ports:
       - 10001:8080
+      - 10002:8443
     environment:
       - MAVEN_CONFIG=/var/maven/.m2
     volumes:
       - .:/app:delegated
+    labels:
+      - traefik.http.routers.https.rule=Host(`${DOMAIN}`)
+      - traefik.http.routers.https.entrypoints=https
+      - traefik.http.routers.https.tls=true
+      - traefik.http.routers.https.tls.certresolver=${CERT_RESOLVER}
